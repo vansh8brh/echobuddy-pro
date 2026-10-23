@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EchoBuddy — AI Spatial Perception Platform for Visually Impaired</title>
+    
+    <!-- TensorFlow.js & COCO-SSD Real-Time Client Vision Models -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="app-header">
+        <div class="logo-group">
+            <div class="radar-pulse-icon"></div>
+            <div>
+                <h1>EchoBuddy <span class="badge-tag">PRO</span></h1>
+                <p class="subtitle">Autonomous AI Spatial Perception & Hands-Free Voice Companion</p>
+            </div>
+        </div>
+        
+        <div class="header-actions">
+            <div class="status-badge" id="ai-vision-status">
+                <span class="status-dot pulsing"></span> AI Vision: Loading Model...
+            </div>
+            <a href="/static/presentation.html" target="_blank" class="btn" style="text-decoration:none; background:rgba(168,85,247,0.25); border:1px solid #a855f7; color:#c084fc; font-weight:700;">📊 Pitch Deck (Team Broxo)</a>
+            <button class="btn btn-voice-master" id="btn-toggle-voice-agent">🎙️ Hands-Free Voice Agent: ACTIVE</button>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <!-- Voice-First Hands-Free Command Banner -->
+        <section class="voice-banner-card">
+            <div class="voice-wave-container">
+                <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            </div>
+            <div class="voice-banner-text">
+                <span class="voice-title">🎙️ Hands-Free Voice Command Mode Active</span>
+                <p class="voice-hint">Simply speak out loud: <strong id="voice-example-text">"Find my phone"</strong> or <strong onclick="triggerSceneReader()">"What do you see?"</strong></p>
+            </div>
+            <button class="btn btn-scene-read" id="btn-scene-read" onclick="triggerSceneReader()">👁️ Scan Entire Room</button>
+        </section>
+
+        <!-- Search Bar & Object Lock Controls -->
+        <section class="search-bar-card">
+            <div class="search-input-group">
+                <label for="custom-target-input">🎯 Target Object:</label>
+                <input type="text" id="custom-target-input" placeholder="Say or type target object (e.g., bottle, phone, laptop, keys, cup, chair)..." value="bottle">
+                <button class="btn btn-search" id="btn-set-target">Lock Target</button>
+                <button class="btn btn-mic" id="btn-voice-command">🎙️ Speak Target</button>
+            </div>
+            
+            <div class="quick-tags">
+                <span class="tag-label">Frequently Used:</span>
+                <button class="tag-btn" onclick="setTarget('bottle')">🍼 Bottle</button>
+                <button class="tag-btn" onclick="setTarget('cell phone')">📱 Mobile Phone</button>
+                <button class="tag-btn" onclick="setTarget('laptop')">💻 Laptop</button>
+                <button class="tag-btn" onclick="setTarget('cup')">☕ Cup / Mug</button>
+                <button class="tag-btn" onclick="setTarget('keys')">🔑 Keys</button>
+                <button class="tag-btn" onclick="setTarget('chair')">🪑 Chair</button>
+                <button class="tag-btn" onclick="setTarget('backpack')">🎒 Backpack</button>
+                <button class="tag-btn" onclick="setTarget('glasses')">👓 Glasses</button>
+            </div>
+        </section>
+
+        <!-- Mode & Audio Master Control Bar -->
+        <section class="control-bar">
+            <div class="mode-selector">
+                <button class="btn btn-mode active" id="btn-mode-cam">📷 Real-Time Camera AI Vision</button>
+                <button class="btn btn-mode" id="btn-mode-sim">🎯 3D Interactive Simulator</button>
+                <button class="btn btn-mode" id="btn-mode-api">⚡ Developer API</button>
+            </div>
+            
+            <div class="audio-master-control">
+                <button class="btn btn-primary" id="btn-toggle-audio">🔊 Spatial Sonar Audio: ON</button>
+                <button class="btn btn-speech" id="btn-toggle-speech">🗣️ Voice Speech Guidance: ON</button>
+                <button class="btn btn-haptic" id="btn-toggle-haptics">📳 Haptic Pulses: ON</button>
+            </div>
+        </section>
+
+        <!-- Main Viewport Grid -->
+        <section class="viewport-grid">
+            <!-- Camera & Detection Canvas Viewport -->
+            <div class="canvas-card">
+                <div class="canvas-header">
+                    <span class="card-title" id="view-title">Real-Time Optical Depth & Object Localization</span>
+                    <span class="hint-tag" id="camera-fps-tag">30 FPS • WebGL Accelerated</span>
+                </div>
+                
+                <div class="canvas-wrapper">
+                    <!-- Live Camera Feed Video -->
+                    <video id="webcam-video" autoplay playsinline muted></video>
+
+                    <!-- Real-Time AI Detection Overlay Canvas -->
+                    <canvas id="detection-canvas" width="640" height="480"></canvas>
+
+                    <!-- Interactive Canvas for Simulation Mode -->
+                    <canvas id="sonar-canvas" width="640" height="480" class="hidden"></canvas>
+
+                    <!-- Lock Overlay -->
+                    <div id="lock-overlay" class="lock-overlay hidden">
+                        <div class="lock-box">
+                            <span class="lock-icon">🔒</span>
+                            <span class="lock-text">TARGET LOCKED — REACH DIRECTLY AHEAD</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Guidance Verbal Banner -->
+                <div class="guidance-banner" id="guidance-banner">
+                    🔊 Point camera towards room to detect objects in real time.
+                </div>
+            </div>
+
+            <!-- Real-Time Telemetry & Spatial Perception Side Panel -->
+            <div class="telemetry-card">
+                <h2 class="card-title">Spatial Telemetry & Perception</h2>
+                
+                <!-- Spoken Speech Announcement Box -->
+                <div class="speech-box">
+                    <span class="speech-label">🗣️ Voice Assistant Narration:</span>
+                    <p class="speech-text" id="speech-log">"EchoBuddy active. Listening for voice commands..."</p>
+                </div>
+
+                <!-- Real-Time Detected Objects Radar List -->
+                <div class="detected-list-card">
+                    <span class="list-title">👁️ Objects Currently Visible:</span>
+                    <ul class="detected-items" id="detected-objects-list">
+                        <li class="empty-item">Scanning camera feed...</li>
+                    </ul>
+                </div>
+
+                <div class="telemetry-metrics">
+                    <div class="metric-box">
+                        <span class="metric-label">Stereo Spatial Panning (Left / Right)</span>
+                        <span class="metric-value" id="val-pan">0.00</span>
+                        <div class="meter-bar"><div class="meter-fill" id="meter-pan" style="width: 50%;"></div></div>
+                    </div>
+
+                    <div class="metric-box">
+                        <span class="metric-label">Calculated Real Distance (Depth)</span>
+                        <span class="metric-value highlight" id="val-dist">1.20 m (3.9 ft)</span>
+                        <div class="meter-bar"><div class="meter-fill highlight" id="meter-dist" style="width: 60%;"></div></div>
+                    </div>
+
+                    <div class="metric-box">
+                        <span class="metric-label">Target Alignment Lock</span>
+                        <span class="metric-value highlight" id="val-prox">45.0%</span>
+                        <div class="meter-bar"><div class="meter-fill highlight" id="meter-prox" style="width: 45%;"></div></div>
+                    </div>
+                </div>
+
+                <div class="spatial-coords-box">
+                    <h3>3D Spatial Vector:</h3>
+                    <p class="code-line">dx: <span id="val-dx">0.00</span> | dy: <span id="val-dy">0.00</span> | dz: <span id="val-dz">1.20m</span></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- API Playground & Integration Section -->
+        <section class="api-section hidden" id="api-playground-section">
+            <h2 class="section-title">Developer REST & WebSocket API Docs</h2>
+            <div class="api-grid">
+                <div class="api-card">
+                    <h3>1. POST /api/v1/sonify</h3>
+                    <p class="api-desc">Converts raw 3D relative coordinates (dx, dy, dz) into real-time audio parameters.</p>
+                    <pre class="code-block">curl -X POST "http://localhost:8000/api/v1/sonify" \
+  -H "Content-Type: application/json" \
+  -d '{"dx": -0.35, "dy": 0.50, "dz": 0.85, "target_name": "bottle"}'</pre>
+                </div>
+
+                <div class="api-card">
+                    <h3>2. POST /api/v1/scene-describe</h3>
+                    <p class="api-desc">Generates complete verbal scene narration for blind users from detected items list.</p>
+                    <pre class="code-block">curl -X POST "http://localhost:8000/api/v1/scene-describe" \
+  -H "Content-Type: application/json" \
+  -d '{"objects": [{"label": "bottle", "distance_m": 0.8, "position": "left"}]}'</pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p>EchoBuddy Pro • AI Spatial Perception & Hands-Free Navigation Platform for Visually Impaired</p>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
